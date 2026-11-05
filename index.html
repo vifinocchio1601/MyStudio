@@ -179,12 +179,12 @@ const BUDGETS=[
   {k:'Blockbuster',w:450000,score:97,t:3}
 ];
 const TIERS=[
-  {n:'Garage indé',plat:1,screens:300,mkt:60000,frais:1500,cost:0,rep:0},
+  {n:'Garage indé',plat:1,screens:300,mkt:60000,frais:1000,cost:0,rep:0},
   {n:'Studio indépendant',plat:2,screens:1200,mkt:400000,frais:6000,cost:250000,rep:25},
   {n:'Studio moyen',plat:3,screens:3000,mkt:2000000,frais:20000,cost:1200000,rep:50},
   {n:'Major',plat:5,screens:4500,mkt:12000000,frais:60000,cost:6000000,rep:75}
 ];
-const SCREEN_COST=150;
+const SCREEN_COST=80;
 const INC=[
   {t:'Pluie battante',d:'Trois jours de déluge sur les extérieurs.',o:[{l:'Attendre une éclaircie',weeks:1},{l:'Tourner sous la pluie',q:-3}]},
   {t:'Caprice de star',d:'{A} exige une loge plus grande et un chef privé.',o:[{l:'Céder',costF:.4},{l:'Refuser net',hype:-5,q:-1}]},
@@ -217,9 +217,9 @@ const nid=()=>S.nextId++;
 function genTitle(g){const [a,b]=TITLES[g];return (pick(a)+' '+pick(b)).trim()}
 function genName(){return pick(FIRST)+' '+pick(LAST)}
 function skewTalent(){return Math.random()<.6?ri(20,58):ri(55,94)}
-function genDirector(){const t=skewTalent(),s=clamp(Math.round(t*rnd(.2,1.05)+rnd(-8,8)),0,100);return{id:nid(),name:genName(),talent:t,star:s,fee:r500(1500+t*t*2+s*s*30),busy:0}}
-function genActor(){const t=skewTalent(),s=clamp(Math.round(t*rnd(.15,1.1)+rnd(-8,10)),0,100);return{id:nid(),name:genName(),talent:t,star:s,fee:r500(1000+t*t*1.5+s*s*40),busy:0}}
-function genScript(){const g=pick(Object.keys(GENRES));const lo=20+S.tier*10,hi=72+S.tier*8;const q=ri(lo,Math.min(97,hi));return{id:nid(),title:genTitle(g),genre:g,quality:q,price:r500((2000+q*q*3)*(1+S.tier*.8))}}
+function genDirector(){const t=skewTalent(),s=clamp(Math.round(t*rnd(.2,1.05)+rnd(-8,8)),0,100);return{id:nid(),name:genName(),talent:t,star:s,fee:r500(1500+t*t*2+s*s*12),busy:0}}
+function genActor(){const t=skewTalent(),s=clamp(Math.round(t*rnd(.15,1.1)+rnd(-8,10)),0,100);return{id:nid(),name:genName(),talent:t,star:s,fee:r500(1000+t*t*1.5+s*s*15),busy:0}}
+function genScript(){const g=pick(Object.keys(GENRES));const lo=20+S.tier*10,hi=72+S.tier*8;const q=ri(lo,Math.min(97,hi));return{id:nid(),title:genTitle(g),genre:g,quality:q,price:r500((1000+q*q*2)*(1+S.tier*.8))}}
 function refreshMarket(){S.scripts=Array.from({length:5},genScript);S.marketWeek=S.week}
 function ensureComps(){
   for(let w=Math.max(S.compGen+1,S.week+1);w<=S.week+10;w++){
@@ -229,14 +229,14 @@ function ensureComps(){
   S.comps=S.comps.filter(c=>c.week>=S.week-3);
 }
 function compLoad(w){return S.comps.reduce((s,c)=>s+(c.week===w?c.force:c.week===w-1?c.force*.6:c.week===w-2?c.force*.3:0),0)}
-const compFactor=w=>1/(1+compLoad(w)/220);
+const compFactor=w=>1/(1+compLoad(w)/350);
 
 function newGame(){
-  S={v:1,week:1,cash:60000,rep:5,tier:0,nextId:1,directors:[],actors:[],scripts:[],projects:[],comps:[],compGen:0,ledger:[],log:[],cashHist:[60000],marketWeek:1};
+  S={v:2,week:1,cash:150000,rep:5,tier:0,nextId:1,directors:[],actors:[],scripts:[],projects:[],comps:[],compGen:0,ledger:[],log:[],cashHist:[150000],marketWeek:1};
   for(let i=0;i<14;i++)S.directors.push(genDirector());
   for(let i=0;i<22;i++)S.actors.push(genActor());
   refreshMarket();ensureComps();
-  addLog('Ton garage est loué. Un plateau, 60 000 € et beaucoup d\'ambition.');
+  addLog('Ton garage est loué. Un plateau, 150 000 € et beaucoup d\'ambition.');
 }
 
 /* ---------- Sauvegarde ---------- */
@@ -260,7 +260,7 @@ function finalizeQuality(p){
   p.starPower=clamp(star*.45+p.dir.star*.1+p.hypeMod,0,70);
 }
 const hypeFor=(p,mkt)=>clamp(p.starPower+45*(1-Math.exp(-mkt/(5000+p.cost*.5))),0,100);
-const perScreen1=(p,w,hype)=>1400*Math.pow(p.quality/60,1.6)*(.45+hype/90)*GENRES[p.genre].appeal*season(p.genre,w)*compFactor(w);
+const perScreen1=(p,w,hype)=>3000*Math.pow(p.quality/60,1.6)*(.45+hype/90)*GENRES[p.genre].appeal*season(p.genre,w)*compFactor(w);
 const decay=q=>.42+q/220;
 const critic=q=>(q/10).toFixed(1).replace('.',',');
 
@@ -546,8 +546,19 @@ document.addEventListener('input',e=>{
   document.getElementById('r-sum').innerHTML=r.html;document.getElementById('r-foot').innerHTML=r.foot;
 });
 
+function migrate(){
+  if(S.v===1){
+    S.directors.forEach(d=>d.fee=r500(1500+d.talent*d.talent*2+d.star*d.star*12));
+    S.actors.forEach(a=>a.fee=r500(1000+a.talent*a.talent*1.5+a.star*a.star*15));
+    S.scripts.forEach(x=>x.price=r500((1000+x.quality*x.quality*2)*(1+S.tier*.8)));
+    pay(90000,'Apport du producteur associé');
+    addLog('Un producteur associé t\'apporte 90 000 €. Les cachets et les scénarios sont moins chers.');
+    S.v=2;save();
+  }
+}
 function start(data){
   if(data&&data.S)S=data.S;else if(!load())newGame();
+  migrate();
   if(data&&data.tab)tab=data.tab;
   window.claude?.hot?.snapshot?.(()=>({S,tab}));
   render();
